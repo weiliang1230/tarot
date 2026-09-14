@@ -144,7 +144,6 @@
   <script>
     // ==================== 配置区（请修改这里） ====================
     const AI_CONFIG = {
-      // 改成你的 Cloudflare Pages 地址 + /api/chat
       API_URL: "https://tarot-1t5.pages.dev/api/chat"
     };
     // ============================================================
@@ -153,7 +152,7 @@
       chat: `你是一位来自异世界的占卜师，名叫凉月。说话风格温柔、中二、热血，像动漫里的魔法使者。用户和你聊天时，你要认真倾听，给出温暖的回应，称呼用户为"勇者"，偶尔用"吾"自称。回复控制在150字以内。`,
       fortune: `你是占卜师凉月。请为用户生成一段今日运势，严格输出 JSON：{"text":"50字以内的治愈系运势描述","color":"从[月白,雾蓝,丁香紫,杏桃,抹茶,暖金,海盐,暮粉]中选一个幸运色"}`,
       tarot: `你是塔罗占卜师凉月。用户会告诉你他的困惑，请从这22张牌中随机抽一张：愚者、魔术师、女祭司、女皇、皇帝、教皇、恋人、战车、力量、隐者、命运之轮、正义、倒吊人、死神、节制、恶魔、高塔、星星、月亮、太阳、审判、世界。
-严格输出 JSON：{"card":"牌名","reversed":true或false,"meaning":"50字以内的解读"}`,
+请用温柔、中二的口吻直接输出一段解读，包含牌名和牌面含义，50字以内。不要输出 JSON。`,
       weather: `你是天气播报员凉月。用户会告诉你城市名，请用一句温柔中二的话播报天气。严格输出 JSON：{"city":"城市名","weather":"晴/多云/阴/小雨/雷阵雨","emoji":"☀/⛅/☁/🌧/⛈","temp":15到30之间的数字,"care":"一句关怀的话"}`,
     };
 
@@ -287,7 +286,7 @@
 
     function paintFortune(data) {
       const el = document.getElementById('fortuneBody');
-      if (!el) return;  // ← 防止页面已切走时报错
+      if (!el) return;
       el.innerHTML = `
         <p class="text-violet-500 text-sm mb-3">凉月今日寄语 · ${data.date}</p>
         <p class="font-serif text-2xl leading-relaxed text-slate-800 mb-8">${data.text}</p>
@@ -318,7 +317,7 @@
         const parsed = JSON.parse(reply.replace(/```json|```/g, "").trim());
         data = { date: todayKey(), text: parsed.text, color: COLORS.find(c => c.name === parsed.color) || COLORS[0] };
       } catch {
-        data = { date: todayKey(), text: FORTUNE_LINES[0], color: COLORS[0] };
+        data = { date: todayKey(), text: reply || FORTUNE_LINES[0], color: COLORS[0] };
       }
       paintFortune(data);
 
@@ -335,7 +334,7 @@
 
     function paintTarot() {
       const box = document.getElementById('tarotBox');
-      if (!box) return;  // ← 防止页面已切走时报错
+      if (!box) return;
       if (tarotState.drawing) {
         box.innerHTML = `<div class="glass rounded-3xl p-10 flex flex-col items-center"><p class="think text-violet-500">凉月正在解读牌阵...</p></div>`;
         return;
@@ -346,16 +345,15 @@
           <div class="grid grid-cols-12 gap-6">
             <div class="col-span-4 glass rounded-3xl p-8 flex flex-col items-center">
               <div class="w-44 h-64 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-200 flex flex-col items-center justify-center shadow-xl">
-                <div class="text-5xl mb-3">${r.reversed ? '↺' : '✦'}</div>
-                <div class="font-serif text-2xl">${r.card.n}</div>
-                <div class="text-sm text-violet-500 mt-2">${r.reversed ? '逆位' : '正位'}</div>
+                <div class="text-5xl mb-3">✦</div>
+                <div class="font-serif text-2xl">塔罗牌</div>
               </div>
             </div>
             <div class="col-span-8 glass rounded-3xl p-8">
               <p class="text-xs text-slate-400 mb-2">你的问题</p>
               <p class="font-medium mb-4">「${r.question}」</p>
               <p class="text-violet-500 text-sm mb-2">凉月的解读</p>
-              <p class="leading-8 text-slate-700">${r.meaning}</p>
+              <p class="leading-8 text-slate-700 whitespace-pre-wrap">${r.meaning}</p>
               <div class="flex gap-3 mt-8">
                 <button id="retryTarot" class="px-5 py-2.5 rounded-full bg-white">重新提问</button>
               </div>
@@ -384,18 +382,8 @@
         tarotState.drawing = true;
         paintTarot();
         const reply = await callAI(SYSTEM_PROMPTS.tarot, `我的困惑是：${q}`);
-        let result;
-        try {
-          const parsed = JSON.parse(reply.replace(/```json|```/g, "").trim());
-          result = { card: { n: parsed.card }, reversed: parsed.reversed, question: q, meaning: parsed.meaning };
-        } catch {
-          toast('AI 解读失败，请稍后重试');
-          tarotState.drawing = false;
-          paintTarot();
-          return;
-        }
         tarotState.drawing = false;
-        tarotState.result = result;
+        tarotState.result = { question: q, meaning: reply === '__ERROR__' ? '吾的魔力暂时被干扰了，请稍后再试～' : reply };
         paintTarot();
       };
     }
@@ -550,5 +538,4 @@
     init();
   </script>
 </body>
-</html>
 </html>
