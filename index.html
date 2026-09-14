@@ -33,8 +33,6 @@
     .glass { background: rgba(255,255,255,.72); backdrop-filter: blur(18px); }
     @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     .floaty { animation: floaty 5s ease-in-out infinite; }
-    @keyframes pulse-soft { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
-    .think { animation: pulse-soft 1.4s ease-in-out infinite; }
     .page-enter { animation: pageIn .35s ease; }
     @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -42,6 +40,20 @@
     .chat-scroll { scrollbar-gutter: stable; }
     .bubble-in { animation: fadeIn .28s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    /* 旋转加载动画 */
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 3px solid rgba(124, 92, 232, 0.2);
+      border-top-color: #7c5ce8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
 
     @media (max-width: 768px) {
       aside { display: none !important; }
@@ -210,7 +222,8 @@
         <button data-nav="${n.id}" class="w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition ${page===n.id ? 'bg-violet-500 text-white shadow-lg' : 'hover:bg-white/70 text-slate-600'}">
           <span class="w-6 text-center">${n.icon}</span><span>${n.name}</span>
         </button>`).join('');
-      const mobileNav = NAV.filter(n => ['home','chat','fortune','tarot','mine'].includes(n.id));
+      // 手机端底部导航：首页、今日运势、塔罗、天气、我的
+      const mobileNav = NAV.filter(n => ['home','fortune','tarot','weather','mine'].includes(n.id));
       const tabbar = document.getElementById('mobileTabbar');
       if (tabbar) {
         tabbar.innerHTML = mobileNav.map(n => `
@@ -277,7 +290,12 @@
         <div class="max-w-3xl">
           <div class="glass rounded-3xl p-10 relative overflow-hidden">
             <div class="absolute right-0 top-0 w-56 h-56 bg-violet-200/40 blur-3xl rounded-full"></div>
-            <div id="fortuneBody"><p class="think text-violet-500">凉月正在查看星象...</p></div>
+            <div id="fortuneBody">
+              <div class="flex flex-col items-center justify-center py-12">
+                <div class="spinner mb-4"></div>
+                <p class="text-violet-500 text-sm">凉月正在查看星象...</p>
+              </div>
+            </div>
             <div class="mt-8">
               <button id="refreshBtn" class="px-5 py-2.5 rounded-full bg-violet-500 text-white">刷新运势</button>
             </div>
@@ -302,7 +320,11 @@
       const box = document.getElementById('tarotBox');
       if (!box) return;
       if (tarotState.drawing) {
-        box.innerHTML = `<div class="glass rounded-3xl p-10 flex flex-col items-center"><p class="think text-violet-500">凉月正在解读牌阵...</p></div>`;
+        box.innerHTML = `
+          <div class="glass rounded-3xl p-10 flex flex-col items-center justify-center py-16">
+            <div class="spinner mb-4"></div>
+            <p class="text-violet-500 text-sm">凉月正在解读牌阵...</p>
+          </div>`;
         return;
       }
       if (tarotState.result) {
@@ -366,7 +388,11 @@
         const name = input.value.trim();
         if (!name) { toast('请输入城市名'); return; }
         const box = document.getElementById('weatherResult');
-        box.innerHTML = `<p class="think text-emerald-600">凉月正在看云...</p>`;
+        box.innerHTML = `
+          <div class="flex flex-col items-center justify-center py-12">
+            <div class="spinner mb-4"></div>
+            <p class="text-emerald-600 text-sm">凉月正在看云...</p>
+          </div>`;
         const reply = await callAI(SYSTEM_PROMPTS.weather, `请告诉我${name}今天的天气`);
         const text = reply === '__ERROR__' ? '吾的魔力暂时被干扰了，请稍后再试～' : reply;
         box.innerHTML = `
@@ -427,7 +453,7 @@
         paint();
         const typing = document.createElement('div');
         typing.className = 'flex gap-3';
-        typing.innerHTML = `<div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="max-w-[75%] bg-white/80 rounded-3xl rounded-tl-md px-4 py-3 text-slate-700"><span class="think">凉月正在聆听你的话...</span></div>`;
+        typing.innerHTML = `<div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="max-w-[75%] bg-white/80 rounded-3xl rounded-tl-md px-4 py-3 text-slate-700"><span class="text-violet-400 text-sm">凉月正在聆听你的话...</span></div>`;
         listEl.appendChild(typing);
         listEl.scrollTop = listEl.scrollHeight;
         const reply = await callAI(SYSTEM_PROMPTS.chat, text);
