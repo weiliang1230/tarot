@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>占卜小助手 · 凉月</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans SC"', 'sans-serif'],
+            serif: ['"Noto Serif SC"', 'serif'],
+          },
+          colors: {
+            moon: { 50: '#f6f3ff', 100: '#ece6ff', 200: '#d9ccff', 400: '#a78bfa', 500: '#8b6cf7', 600: '#7c5ce8', 700: '#6d4ad4' },
+            cream: '#fbf7f2',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root { color-scheme: light; }
+    body { font-family: "Noto Sans SC", sans-serif; }
+    .starfield {
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 0%, rgba(167,139,250,.28), transparent 50%),
+        radial-gradient(ellipse 60% 50% at 90% 10%, rgba(110,231,183,.18), transparent 46%),
+        radial-gradient(ellipse 50% 40% at 70% 90%, rgba(249,168,212,.16), transparent 50%),
+        linear-gradient(180deg, #f7f2ff 0%, #fbf7f2 42%, #eef4ff 100%);
+    }
+    .glass { background: rgba(255,255,255,.72); backdrop-filter: blur(18px); }
+    .card-3d { perspective: 1200px; }
+    .card-inner { transform-style: preserve-3d; transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+    .face-back { transform: rotateY(180deg); }
+    @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+    .floaty { animation: floaty 5s ease-in-out infinite; }
+    @keyframes pulse-soft { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+    .think { animation: pulse-soft 1.4s ease-in-out infinite; }
+    @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
+    .skel { background: linear-gradient(90deg, #eee8ff 25%, #f8f5ff 50%, #eee8ff 75%); background-size: 800px 100%; animation: shimmer 1.4s infinite; }
+    .toast-in { animation: toastIn .35s ease; }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .page-enter { animation: pageIn .35s ease; }
+    @keyframes pageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #d4c8f5; border-radius: 99px; }
+    .chat-scroll { scrollbar-gutter: stable; }
+    .bubble-in { animation: toastIn .28s ease; }
+  </style>
+</head>
+<body class="starfield min-h-screen text-slate-700">
+  <div id="app" class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-[272px] shrink-0 glass border-r border-white/70 min-h-screen p-6 flex flex-col">
+      <div class="flex items-center gap-3 mb-8">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 flex items-center justify-center text-white text-xl shadow-lg shadow-violet-200 floaty">☽</div>
+        <div>
+          <h1 class="font-serif text-lg text-slate-800">占卜小助手</h1>
+          <p class="text-xs text-violet-500">凉月在此陪伴你</p>
+        </div>
+      </div>
+      <nav class="space-y-1 flex-1" id="nav"></nav>
+      <p class="text-[11px] text-slate-400 leading-relaxed">仅供娱乐参考，不构成专业建议</p>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 min-h-screen p-8 overflow-y-auto">
+      <header class="flex items-center justify-between mb-8">
+        <div>
+          <p class="text-sm text-violet-500" id="greet">晚上好，我是凉月</p>
+          <h2 class="font-serif text-3xl text-slate-800 mt-1" id="pageTitle">首页</h2>
+        </div>
+        <div class="text-right text-sm text-slate-500">
+          <div id="todayStr"></div>
+          <div class="text-violet-400 text-xs mt-1">治愈 · 陪伴 · 轻量占卜</div>
+        </div>
+      </header>
+      <div id="view" class="page-enter"></div>
+    </main>
+  </div>
+
+  <!-- Privacy modal -->
+  <div id="privacyModal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+    <div class="glass max-w-lg w-full rounded-3xl p-8 shadow-2xl">
+      <div class="text-3xl mb-3">☽</div>
+      <h3 class="font-serif text-2xl mb-2">在开始之前</h3>
+      <p class="text-sm text-slate-600 leading-7 mb-4">你好，我是凉月。使用占卜小助手前，请阅读并同意《隐私政策》与《用户协议》。我们不收集真实姓名、身份证号、手机号等敏感信息；占卜内容仅供娱乐参考，不构成专业建议。</p>
+      <label class="flex items-start gap-2 text-sm mb-6 cursor-pointer">
+        <input id="agreeCheck" type="checkbox" class="mt-1 accent-violet-500" />
+        <span>我已阅读并同意隐私政策与用户协议</span>
+      </label>
+      <button id="agreeBtn" disabled class="w-full py-3 rounded-2xl bg-violet-400 text-white opacity-50 cursor-not-allowed">开始与凉月相遇</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 z-50 glass px-5 py-3 rounded-full shadow-lg text-sm text-slate-700 toast-in"></div>
+
+  <!-- Detail / about / feedback modals -->
+  <div id="overlay" class="hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"></div>
+
+  <script>
+    const NAV = [
+      { id: 'home', name: '首页', icon: '⌂' },
+      { id: 'chat', name: '闲聊', icon: '☾' },
+      { id: 'fortune', name: '今日运势', icon: '✧' },
+      { id: 'tarot', name: '塔罗占卜', icon: '✦' },
+      { id: 'weather', name: '天气查询', icon: '☁' },
+      { id: 'history', name: '历史记录', icon: '☰' },
+      { id: 'mine', name: '我的', icon: '☺' },
+    ];
+    const CHAT_WELCOME = '吾以星见之名——异界占卜师凉月，于此苏醒。天气、运势、塔罗……或只是想找人说说话，勇者尽管开口。吾不是冰冷的查询工具，而是与你同行的魔法使者。';
+    const CHAT_CHIPS = ['北京天气怎么样', '帮我看看今天的运势', '帮我占卜', '最近事业运如何', '今天有点累'];
+    const WEATHER_OPEN = ['吾以星见之名', '天空在低语', '魔力正在涌动'];
+    const TAROT_DOMAINS = [
+      { keys: ['事业运','事业','工作运','职场','工作方向'], label: '事业', line: '吾为汝抽一组牌，看看你的事业方向✨' },
+      { keys: ['感情运','感情','恋爱','桃花','爱情','对象'], label: '感情', line: '吾为汝抽一组牌，看看你的感情方向✨' },
+      { keys: ['学业运','学业','考试','学习'], label: '学业', line: '吾为汝抽一组牌，看看你的学业方向✨' },
+      { keys: ['财运','金钱','理财'], label: '财运', line: '吾为汝抽一组牌，看看你的财运方向✨' },
+      { keys: ['健康运','健康','身体'], label: '健康', line: '吾为汝抽一组牌，看看你的健康方向✨' },
+    ];
+
+    const HOT_Q = ['我最近的感情运势如何', '近期工作会顺利吗', '我该不该做这个决定', '接下来一个月要注意什么'];
+
+    const COLORS = [
+      { name: '月白', hex: '#F4F1EA' }, { name: '雾蓝', hex: '#A8C5D4' }, { name: '丁香紫', hex: '#C4B5FD' },
+      { name: '杏桃', hex: '#F6C6B8' }, { name: '抹茶', hex: '#B7D3A8' }, { name: '暖金', hex: '#E6C27A' },
+      { name: '海盐', hex: '#D7EEEA' }, { name: '暮粉', hex: '#E8A0BF' },
+    ];
+
+    const CITIES = [
+      ['北京','beijing'],['上海','shanghai'],['广州','guangzhou'],['深圳','shenzhen'],['杭州','hangzhou'],
+      ['成都','chengdu'],['武汉','wuhan'],['西安','xian'],['南京','nanjing'],['重庆','chongqing'],
+      ['苏州','suzhou'],['天津','tianjin'],['长沙','changsha'],['郑州','zhengzhou'],['青岛','qingdao'],
+      ['厦门','xiamen'],['合肥','hefei'],['福州','fuzhou'],['昆明','kunming'],['大连','dalian'],
+      ['哈尔滨','harbin'],['沈阳','shenyang'],['济南','jinan'],['宁波','ningbo'],['无锡','wuxi'],
+      ['佛山','foshan'],['东莞','dongguan'],['南宁','nanning'],['南昌','nanchang'],['贵阳','guiyang'],
+      ['太原','taiyuan'],['石家庄','shijiazhuang'],['兰州','lanzhou'],['乌鲁木齐','wulumuqi'],['拉萨','lasa'],
+      ['海口','haikou'],['三亚','sanya'],['香港','hongkong'],['澳门','macao'],['台北','taipei'],
+    ];
+
+    const WEATHERS = [
+      { k:'晴', e:'☀', care:'阳光刚好落在你肩上，记得把窗户打开，让风也认识你一下。' },
+      { k:'多云', e:'⛅', care:'云层把光线调得柔软，适合慢慢做事，不必和自己较劲。' },
+      { k:'阴', e:'☁', care:'天色淡一点也没关系，凉月陪你把今天过得安静而完整。' },
+      { k:'小雨', e:'🌧', care:'雨声像轻声提醒：带把伞，也给心情留一点柔软。' },
+      { k:'雷阵雨', e:'⛈', care:'天气有些急，你不必急。喝口水，等这场喧哗过去。' },
+    ];
+
+    const TAROT = [
+      { n:'愚者', u:'新的开始近在眼前。对你的问题，凉月想说：勇敢迈出第一步，世界会为你让路。', r:'脚步有些匆忙。先停一停，看清方向再出发，也不算晚。' },
+      { n:'魔术师', u:'你拥有比自己以为更多的资源。把心意落到行动上，事情就会开始转动。', r:'能量分散了。选一件真正重要的事，专注会比技巧更有力量。' },
+      { n:'女祭司', u:'答案已经在心里。安静下来，直觉会比外界的声音更诚实。', r:'别再反复确认。过度分析会把温柔的预感吓跑。' },
+      { n:'女皇', u:'丰盛与被滋养的感觉正在靠近。允许自己被善待，也善待自己。', r:'先照顾身体与情绪。空杯子倒不出甜水。' },
+      { n:'皇帝', u:'秩序会带来安全感。立一个小小的规矩，局面会比想象中听话。', r:'控制欲可以放一放。松手，并不等于失去。' },
+      { n:'教皇', u:'传统与经验能成为你的依靠。向可信的人请教，会少走弯路。', r:'不必完全听从旧规则。你的感受也值得被写进答案里。' },
+      { n:'恋人', u:'选择关乎真心。跟随让你感到被理解的那一边。', r:'犹豫来自害怕失去。先诚实地面对自己想要什么。' },
+      { n:'战车', u:'意志会带你穿过阻力。方向明确时，速度就会成为礼物。', r:'硬闯未必有效。调整节奏，胜利会换一种方式到来。' },
+      { n:'力量', u:'温柔比强硬更有力。用耐心驯服焦虑，你已经比昨天更稳。', r:'对自己太苛刻了。把力量留给真正重要的战场。' },
+      { n:'隐者', u:'适合独处与复盘。答案不在热闹里，而在你愿意面对的那盏灯下。', r:'别把自己关得太死。偶尔让光进来，路会更清楚。' },
+      { n:'命运之轮', u:'转机正在发生。无论当下顺逆，都只是轮子的一面。', r:'暂时的停滞不是惩罚。等轮子转到你这边，你会懂的。' },
+      { n:'正义', u:'公平会到来。把事实摊开，诚实会成为你的护身符。', r:'先对自己公正。苛责别人之前，也看看自己有没有偏颇。' },
+      { n:'倒吊人', u:'换个角度看问题。暂停不是浪费，是为了看见新的出口。', r:'牺牲感太重了。你可以选择不那么辛苦地等待。' },
+      { n:'死神', u:'旧的结束是为了腾出位置。告别会疼，也会让你更轻。', r:'抗拒变化会延长不适。轻轻放手，新的季节才进得来。' },
+      { n:'节制', u:'调和是答案。不走极端，把节奏调到刚好的温度。', r:'有些地方过满了。减一点，生活会重新变得好喝。' },
+      { n:'恶魔', u:'有束缚正在被看见。承认渴望，才能不被它偷偷牵着走。', r:'你比锁链更自由。一个小小的拒绝，就能松开很多。' },
+      { n:'塔', u:'旧结构可能晃动。崩溃不可怕，真实会从裂缝里长出来。', r:'提前加固你的生活。沟通、休息、备份，都是避雷。' },
+      { n:'星星', u:'希望很近。许一个具体的愿，然后把信任交给时间。', r:'信念被云遮住了。回忆一次被温柔对待的时刻，星光还在。' },
+      { n:'月亮', u:'情绪潮汐正在涨。不必立刻看清一切，允许模糊也是一种智慧。', r:'幻觉来自疲惫。睡一觉再决定，会少很多误会。' },
+      { n:'太阳', u:'明亮与肯定属于你。把好消息说出来，快乐会加倍。', r:'光太盛也会刺眼。收敛一点锋芒，温暖会更长久。' },
+      { n:'审判', u:'是时候回应内心的召唤。过去可以被原谅，未来可以被选择。', r:'别急着给自己判决。再听一遍心里的声音。' },
+      { n:'世界', u:'一段旅程圆满了。庆祝它，再轻轻走向下一圈。', r:'差临门一脚。把未完成的收尾，完整会自己来找你。' },
+    ];
+
+    const FORTUNE_LINES = [
+      '今天适合把脚步放慢半拍。你会在一件小事里，重新认出自己。',
+      '有人想起你，只是还没找到合适的句子。保持柔软，好消息喜欢绕路。',
+      '灵感会在午后悄悄敲门。给自己留一段不被打扰的空白。',
+      '不必证明什么。被理解是礼物，不被理解也依然完整。',
+      '把焦虑写成一张清单，划掉其中一项，今天就算赢了。',
+      '适合整理抽屉和心情。扔掉过期的担忧，腾地方给新的喜欢。',
+      '会有一次小小的好运，像口袋里多出来的糖。记得笑一下。',
+      '沟通比完美更重要。说一句真心话，关系会松一口气。',
+    ];
+
+    const store = {
+      get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
+      set(k, v) { localStorage.setItem(k, JSON.stringify(v)); },
+    };
+
+    const todayKey = () => new Date().toISOString().slice(0,10);
+    const hash = (s) => Array.from(s).reduce((a,c)=>((a<<5)-a)+c.charCodeAt(0)|0,0);
+
+    function track(name, params = {}) {
+      console.log('[track]', name, params);
+    }
+
+    function toast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    function greetText() {
+      const h = new Date().getHours();
+      if (h < 6) return '夜深了，凉月还醒着';
+      if (h < 11) return '早上好，我是凉月';
+      if (h < 14) return '中午好，慢慢来就好';
+      if (h < 18) return '下午好，风有点温柔';
+      return '晚上好，我是凉月';
+    }
+
+    function updateStreak() {
+      const stats = store.get('stats', { total: 0, streak: 0, last: '', cards: {} });
+      const t = todayKey();
+      if (stats.last !== t) {
+        const y = new Date(); y.setDate(y.getDate()-1);
+        const yk = y.toISOString().slice(0,10);
+        stats.streak = stats.last === yk ? (stats.streak || 0) + 1 : 1;
+        stats.last = t;
+        store.set('stats', stats);
+      }
+    }
+
+    let page = 'home';
+    let fortuneLoading = false;
+
+    function renderNav() {
+      document.getElementById('nav').innerHTML = NAV.map(n => `
+        <button data-nav="${n.id}" class="w-full text-left px-4 py-3 rounded-2xl flex items-center gap-3 transition ${page===n.id ? 'bg-violet-500 text-white shadow-lg shadow-violet-200' : 'hover:bg-white/70 text-slate-600'}">
+          <span class="w-6 text-center">${n.icon}</span><span>${n.name}</span>
+        </button>`).join('');
+      document.querySelectorAll('[data-nav]').forEach(b => b.onclick = () => go(b.dataset.nav));
+    }
+
+    function go(id) {
+      page = id;
+      track('page_view', { page_name: id });
+      if (id === 'history') track('history_list_view', { record_count: store.get('history', []).length });
+      if (id === 'mine') track('mine_view', { is_login: !!store.get('user')?.loggedIn });
+      document.getElementById('pageTitle').textContent = NAV.find(n=>n.id===id).name;
+      document.getElementById('greet').textContent = id === 'chat' ? '吾以星见之名，在此等候勇者' : greetText();
+      renderNav();
+      const view = document.getElementById('view');
+      view.classList.remove('page-enter');
+      void view.offsetWidth;
+      view.classList.add('page-enter');
+      const map = { home: renderHome, chat: renderChat, fortune: renderFortune, tarot: renderTarot, weather: renderWeather, history: renderHistory, mine: renderMine };
+      map[id]();
+    }
+
+    function renderHome() {
+      document.getElementById('view').innerHTML = `
+        <div class="grid grid-cols-12 gap-6">
+          <section class="col-span-7 glass rounded-3xl p-8 relative overflow-hidden">
+            <div class="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-violet-200/50 blur-2xl"></div>
+            <p class="text-violet-500 text-sm mb-2">今日问候</p>
+            <h3 class="font-serif text-3xl text-slate-800 leading-snug mb-4">把心事交给月光，<br/>把脚步交给今晚的风。</h3>
+            <p class="text-slate-500 leading-7 max-w-xl">我是来自异世界的占卜师凉月。通晓星象与天气之力——想查天气、看运势、抽塔罗，或只是闲聊，都可以来找吾。吾不是查询工具，而是与你同行的魔法使者。</p>
+          </section>
+          <button data-go="chat" class="col-span-5 glass rounded-3xl p-8 flex flex-col justify-center text-left hover:shadow-xl hover:-translate-y-0.5 transition group">
+            <div class="text-6xl floaty w-fit mb-4">🌙</div>
+            <p class="font-serif text-xl">凉月在线</p>
+            <p class="text-sm text-slate-500 mt-2">想被回应的时候，随时来找我。</p>
+            <span class="inline-block mt-4 text-violet-500 text-sm group-hover:translate-x-1 transition">去闲聊 →</span>
+          </button>
+          ${[
+            { id:'chat', t:'与凉月闲聊', d:'温柔、中二、热血。天气、运势、塔罗，或只是说一句今天好累。', c:'from-fuchsia-400 to-violet-300' },
+            { id:'fortune', t:'今日运势', d:'一段治愈系运势，和一枚属于今天的幸运色。', c:'from-violet-400 to-fuchsia-300' },
+            { id:'tarot', t:'塔罗占卜', d:'22 张大阿尔卡纳，一次只抽一张，认真听你的问题。', c:'from-indigo-400 to-sky-300' },
+            { id:'weather', t:'天气查询', d:'温度、风力，外加一句刚好的关怀。', c:'from-emerald-400 to-teal-300' },
+          ].map(x=>`
+            <button data-go="${x.id}" class="col-span-3 glass rounded-3xl p-6 text-left hover:shadow-xl hover:-translate-y-0.5 transition group">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${x.c} mb-4 shadow"></div>
+              <h4 class="font-serif text-xl mb-2">${x.t}</h4>
+              <p class="text-sm text-slate-500 leading-6">${x.d}</p>
+              <span class="inline-block mt-4 text-violet-500 text-sm group-hover:translate-x-1 transition">进入 →</span>
+            </button>`).join('')}
+        </div>`;
+      document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+        track('home_function_click', { function_name: b.dataset.go });
+        go(b.dataset.go);
+      });
+    }
+
+    function fortunePayload(forceNew = false) {
+      const key = 'fortune:' + todayKey();
+      const cached = store.get(key);
+      if (cached && !forceNew) return cached;
+      const line = FORTUNE_LINES[Math.abs(hash(todayKey() + (forceNew ? Date.now() : ''))) % FORTUNE_LINES.length];
+      const color = COLORS[Math.abs(hash(todayKey() + 'c' + (forceNew?Date.now():''))) % COLORS.length];
+      const data = { date: todayKey(), text: line, color };
+      store.set(key, data);
+      return data;
+    }
+
+    function getWeatherData(name) {
+      const seed = Math.abs(hash(name + todayKey()));
+      const w = WEATHERS[seed % WEATHERS.length];
+      const temp = 16 + (seed % 18);
+      const hum = 40 + (seed % 45);
+      const wind = ['微风 2 级','东北风 3 级','南风 2 级'][seed % 3];
+      const days = [0,1,2].map(i => {
+        const ww = WEATHERS[(seed+i)%WEATHERS.length];
+        const d = new Date(); d.setDate(d.getDate()+i);
+        return { label: i===0?'今天': i===1?'明天':'后天', date: `${d.getMonth()+1}/${d.getDate()}`, w: ww, t: temp - i + (i===2?1:0) };
+      });
+      return { city: name, weather: w.k, emoji: w.e, temp, humidity: hum, wind, days, care: w.care };
+    }
+
+    function findCityInText(text) {
+      const t = text.trim();
+      const tl = t.toLowerCase();
+      return [...CITIES].sort((a,b)=>b[0].length-a[0].length).find(([c,p]) => t.includes(c) || tl.includes(p))?.[0] || null;
+    }
+
+    function workflowTarot(question) {
+      const card = TAROT[Math.floor(Math.random()*TAROT.length)];
+      const reversed = Math.random() < 0.5;
+      return { card, reversed, question, meaning: reversed ? card.r : card.u };
+    }
+
+    function renderFortune(opts = {}) {
+      const firstToday = !store.get('fortuneShown:' + todayKey());
+      const refreshMeta = store.get('fortuneMeta:' + todayKey(), { count: 0 });
+      const showSkel = opts.skeleton || (firstToday && !opts.afterSkel);
+      document.getElementById('view').innerHTML = `
+        <div class="max-w-3xl">
+          <div class="glass rounded-3xl p-10 relative overflow-hidden">
+            <div class="absolute right-0 top-0 w-56 h-56 bg-violet-200/40 blur-3xl rounded-full"></div>
+            ${showSkel ? `
+              <div class="skel h-6 w-32 rounded mb-6"></div>
+              <div class="skel h-24 w-full rounded-2xl mb-6"></div>
+              <div class="skel h-16 w-40 rounded-2xl"></div>
+            ` : `<div id="fortuneBody"></div>`}
+            <div class="mt-8 flex items-center gap-3">
+              <button id="refreshBtn" class="px-5 py-2.5 rounded-full bg-violet-500 text-white disabled:opacity-40 disabled:cursor-not-allowed">刷新运势</button>
+              <span class="text-xs text-slate-400">每日可刷新 3 次 · 剩余 <b id="leftCount"></b> 次</span>
+              <button id="shareFortune" class="ml-auto text-sm text-violet-500">分享</button>
+            </div>
+          </div>
+        </div>`;
+      const left = Math.max(0, 3 - refreshMeta.count);
+      document.getElementById('leftCount').textContent = left;
+      const btn = document.getElementById('refreshBtn');
+      if (left === 0) btn.disabled = true;
+
+      if (showSkel) {
+        if (!opts.skeleton) {
+          setTimeout(() => {
+            store.set('fortuneShown:' + todayKey(), true);
+            renderFortune({ afterSkel: true });
+          }, 1400);
+        }
+        return;
+      }
+
+      const data = fortunePayload();
+      paintFortune(data);
+
+      btn.onclick = () => {
+        const meta = store.get('fortuneMeta:' + todayKey(), { count: 0 });
+        if (meta.count >= 3) {
+          track('fortune_refresh_limit', { limit_count: 3 });
+          toast('今日刷新次数已用完，明天再来吧');
+          btn.disabled = true;
+          return;
+        }
+        btn.disabled = true;
+        track('fortune_refresh', { refresh_count: meta.count + 1 });
+        renderFortune({ skeleton: true });
+        setTimeout(() => {
+          fortunePayload(true);
+          meta.count += 1;
+          store.set('fortuneMeta:' + todayKey(), meta);
+          const hist = store.get('history', []);
+          const f = store.get('fortune:' + todayKey());
+          hist.unshift({ id: Date.now(), type: 'fortune', time: new Date().toISOString(), title: '今日运势', summary: f.text, extra: f.color.name });
+          store.set('history', hist);
+          renderFortune();
+          toast('凉月重新看了看星象～');
+        }, 1400);
+      };
+      document.getElementById('shareFortune').onclick = () => {
+        track('share_click', { share_type: 'fortune', share_channel: 'wechat' });
+        toast('分享卡片已准备好（演示）');
+        track('share_success', { share_type: 'fortune' });
+      };
+    }
+
+    function paintFortune(data) {
+      document.getElementById('fortuneBody').innerHTML = `
+        <p class="text-violet-500 text-sm mb-3">凉月今日寄语 · ${data.date}</p>
+        <p class="font-serif text-2xl leading-relaxed text-slate-800 mb-8">${data.text}</p>
+        <div class="inline-flex items-center gap-3 bg-white/70 rounded-2xl px-4 py-3">
+          <span class="w-8 h-8 rounded-full border border-white shadow" style="background:${data.color.hex}"></span>
+          <div>
+            <div class="text-xs text-slate-400">幸运色</div>
+            <div class="font-medium">${data.color.name}</div>
+          </div>
+        </div>`;
+    }
+
+    let tarotState = { question: '', drawing: false, result: null };
+
+    function renderTarot() {
+      document.getElementById('view').innerHTML = `<div id="tarotBox" class="max-w-4xl"></div>`;
+      paintTarot();
+    }
+
+    function paintTarot() {
+      const box = document.getElementById('tarotBox');
+      if (tarotState.drawing) {
+        box.innerHTML = `
+          <div class="glass rounded-3xl p-10 flex flex-col items-center">
+            <p class="think text-violet-500 mb-8">凉月正在思考中...</p>
+            <div class="card-3d w-52 h-80">
+              <div class="card-inner ${tarotState.flip ? 'flipped' : ''} relative w-full h-full">
+                <div class="face absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-700 to-violet-500 shadow-2xl flex items-center justify-center text-white text-4xl">☽</div>
+                <div class="face face-back absolute inset-0 rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center p-4">
+                  <div class="text-5xl mb-3">${tarotState.result?.reversed ? '↺' : '✦'}</div>
+                  <div class="font-serif text-2xl">${tarotState.result?.card.n || ''}</div>
+                  <div class="text-sm text-violet-500 mt-1">${tarotState.result?.reversed ? '逆位' : '正位'}</div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        return;
+      }
+      if (tarotState.result) {
+        const r = tarotState.result;
+        box.innerHTML = `
+          <div class="grid grid-cols-12 gap-6">
+            <div class="col-span-4 glass rounded-3xl p-8 flex flex-col items-center">
+              <div class="w-44 h-64 rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-200 flex flex-col items-center justify-center shadow-xl">
+                <div class="text-5xl mb-3">${r.reversed ? '↺' : '✦'}</div>
+                <div class="font-serif text-2xl">${r.card.n}</div>
+                <div class="text-sm text-violet-500 mt-2">${r.reversed ? '逆位' : '正位'}</div>
+              </div>
+            </div>
+            <div class="col-span-8 glass rounded-3xl p-8">
+              <p class="text-xs text-slate-400 mb-2">你的问题</p>
+              <p class="font-medium mb-4">「${r.question}」</p>
+              <p class="text-violet-500 text-sm mb-2">凉月的解读</p>
+              <p class="leading-8 text-slate-700">${r.reversed ? r.card.r : r.card.u} 无论牌面如何，你已经愿意认真问一次，这本身就很勇敢。</p>
+              <p class="text-[11px] text-slate-400 mt-4">仅供娱乐参考，不构成专业建议</p>
+              <div class="flex gap-3 mt-8">
+                <button id="saveTarot" class="px-5 py-2.5 rounded-full bg-violet-500 text-white">保存到历史记录</button>
+                <button id="retryTarot" class="px-5 py-2.5 rounded-full bg-white">重新提问</button>
+                <button id="shareTarot" class="px-5 py-2.5 rounded-full text-violet-500">分享</button>
+              </div>
+            </div>
+          </div>`;
+        document.getElementById('saveTarot').onclick = () => {
+          const hist = store.get('history', []);
+          hist.unshift({ id: Date.now(), type: 'tarot', time: new Date().toISOString(), title: r.card.n + (r.reversed?' · 逆位':' · 正位'), summary: r.question, extra: r.reversed ? r.card.r : r.card.u });
+          store.set('history', hist);
+          const stats = store.get('stats', { total: 0, streak: 0, last: '', cards: {} });
+          stats.total = (stats.total || 0) + 1;
+          stats.cards = stats.cards || {};
+          stats.cards[r.card.n] = (stats.cards[r.card.n] || 0) + 1;
+          store.set('stats', stats);
+          track('tarot_result_save', { card_name: r.card.n });
+          toast('已经收进历史里啦');
+        };
+        document.getElementById('retryTarot').onclick = () => { track('tarot_retry'); tarotState = { question:'', drawing:false, result:null }; paintTarot(); };
+        document.getElementById('shareTarot').onclick = () => { track('share_click', { share_type:'tarot', share_channel:'wechat' }); toast('分享卡片已准备好（演示）'); };
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="glass rounded-3xl p-10 max-w-3xl">
+          <p class="text-slate-500 mb-6">把问题轻轻放下来，凉月会为你抽一张大阿尔卡纳。</p>
+          <textarea id="qInput" maxlength="50" rows="3" class="w-full rounded-2xl border border-violet-100 p-4 outline-none focus:ring-2 focus:ring-violet-300 bg-white/80" placeholder="例如：我最近的感情运势如何">${tarotState.question}</textarea>
+          <div class="flex justify-between text-xs text-slate-400 mt-2">
+            <span id="qHint"></span><span id="qCount">0 / 50</span>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-4" id="hot"></div>
+          <button id="drawBtn" disabled class="mt-8 px-8 py-3 rounded-full bg-violet-400 text-white opacity-50 cursor-not-allowed">抽牌</button>
+        </div>`;
+      const input = document.getElementById('qInput');
+      const count = document.getElementById('qCount');
+      const hint = document.getElementById('qHint');
+      const drawBtn = document.getElementById('drawBtn');
+      const sync = () => {
+        tarotState.question = input.value;
+        if (input.value.length >= 50) hint.textContent = '问题不能超过50个字';
+        else hint.textContent = '';
+        count.textContent = input.value.length + ' / 50';
+        const ok = input.value.trim().length > 0;
+        drawBtn.disabled = !ok;
+        drawBtn.className = ok
+          ? 'mt-8 px-8 py-3 rounded-full bg-violet-500 text-white'
+          : 'mt-8 px-8 py-3 rounded-full bg-violet-400 text-white opacity-50 cursor-not-allowed';
+      };
+      input.oninput = sync; sync();
+      document.getElementById('hot').innerHTML = HOT_Q.map(q => `<button class="px-3 py-1.5 rounded-full bg-violet-50 text-violet-600 text-sm hover:bg-violet-100" data-q="${q}">${q}</button>`).join('');
+      document.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { input.value = b.dataset.q; sync(); });
+      drawBtn.onclick = () => {
+        const q = input.value.trim();
+        track('tarot_question_input', { question_length: q.length });
+        track('tarot_draw', { question_length: q.length });
+        const draws = store.get('tarotDraws', {});
+        const k = hash(q).toString();
+        const last = draws[k];
+        if (last && Date.now() - last < 24*60*60*1000) {
+          toast('这个问题已经占过啦，24小时后再来');
+          return;
+        }
+        drawBtn.disabled = true;
+        const card = TAROT[Math.floor(Math.random()*TAROT.length)];
+        const reversed = Math.random() < 0.5;
+        tarotState.drawing = true;
+        tarotState.flip = false;
+        tarotState.result = { card, reversed, question: q };
+        paintTarot();
+        setTimeout(() => {
+          tarotState.flip = true;
+          paintTarot();
+        }, 900);
+        setTimeout(() => {
+          draws[k] = Date.now();
+          store.set('tarotDraws', draws);
+          tarotState.drawing = false;
+          track('tarot_result_view', { card_name: card.n });
+          paintTarot();
+        }, 3000);
+      };
+    }
+
+    function renderWeather() {
+      document.getElementById('view').innerHTML = `
+        <div class="max-w-3xl glass rounded-3xl p-10 relative">
+          <div class="relative">
+            <input id="cityInput" class="w-full rounded-2xl border border-emerald-100 p-4 outline-none focus:ring-2 focus:ring-emerald-300 bg-white/80" placeholder="输入城市名或拼音，例如 杭州 / hangzhou" />
+            <div id="cityList" class="hidden absolute z-10 left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl overflow-hidden"></div>
+          </div>
+          <button id="queryWeather" class="mt-4 px-6 py-2.5 rounded-full bg-emerald-500 text-white">查询天气</button>
+          <div id="weatherResult" class="mt-8"></div>
+        </div>`;
+      const input = document.getElementById('cityInput');
+      const list = document.getElementById('cityList');
+      let selected = null;
+      input.oninput = () => {
+        const kw = input.value.trim().toLowerCase();
+        track('weather_city_search', { city_keyword: input.value });
+        if (!kw) { list.classList.add('hidden'); selected = null; return; }
+        const hits = CITIES.filter(([c,p]) => c.includes(input.value.trim()) || p.includes(kw)).slice(0,5);
+        if (!hits.length) {
+          list.classList.remove('hidden');
+          list.innerHTML = `<div class="px-4 py-3 text-sm text-slate-400">未找到该城市，请检查输入</div>`;
+          selected = null;
+          return;
+        }
+        list.classList.remove('hidden');
+        list.innerHTML = hits.map(([c]) => `<button class="w-full text-left px-4 py-3 hover:bg-emerald-50" data-city="${c}">${c}</button>`).join('');
+        list.querySelectorAll('[data-city]').forEach(b => b.onclick = () => {
+          selected = b.dataset.city;
+          input.value = selected;
+          list.classList.add('hidden');
+        });
+      };
+      document.getElementById('queryWeather').onclick = () => {
+        const name = selected || CITIES.find(([c,p]) => c === input.value.trim() || p === input.value.trim().toLowerCase())?.[0];
+        if (!name) { toast('未找到该城市，请检查输入'); return; }
+        track('weather_query', { city_name: name });
+        const box = document.getElementById('weatherResult');
+        box.innerHTML = `<p class="think text-emerald-600">凉月正在看云...</p>`;
+        setTimeout(() => {
+          const data = getWeatherData(name);
+          box.innerHTML = `
+            <div class="rounded-3xl bg-gradient-to-br from-sky-400 to-emerald-300 text-white p-8">
+              <div class="text-sm opacity-90">${data.city}</div>
+              <div class="flex items-end gap-3 mt-2">
+                <div class="text-6xl font-light">${data.temp}°</div>
+                <div class="pb-2">${data.emoji} ${data.weather}</div>
+              </div>
+              <div class="flex gap-6 text-sm mt-4 opacity-90">
+                <span>湿度 ${data.humidity}%</span><span>${data.wind}</span>
+              </div>
+              <p class="mt-6 leading-7 bg-white/15 rounded-2xl p-4">${data.care}</p>
+            </div>
+            <div class="grid grid-cols-3 gap-3 mt-4">
+              ${data.days.map(d=>`<div class="bg-white/80 rounded-2xl p-4 text-center"><div class="text-xs text-slate-400">${d.label} ${d.date}</div><div class="text-2xl my-2">${d.w.e}</div><div class="text-sm">${d.w.k}</div><div class="mt-1 font-medium">${d.t}°</div></div>`).join('')}
+            </div>
+            <button id="shareWeather" class="mt-4 text-sm text-emerald-600">分享天气</button>`;
+          track('weather_result_view', { city_name: name });
+          document.getElementById('shareWeather').onclick = () => { track('share_click', { share_type:'weather', share_channel:'wechat_moments' }); toast('分享卡片已准备好（演示）'); };
+        }, 900);
+      };
+    }
+
+    function chatMessages() {
+      const list = store.get('chatMessages');
+      if (list && list.length) return list;
+      const welcome = [{ role: 'liangyue', text: CHAT_WELCOME, time: Date.now() }];
+      store.set('chatMessages', welcome);
+      return welcome;
+    }
+
+    function seededRand(seed) {
+      let x = Math.abs(hash(String(seed))) || 1;
+      return () => {
+        x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
+        return x / 4294967296;
+      };
+    }
+    function pickFresh(arr, rand, bagKey) {
+      const used = store.get(bagKey, []);
+      const all = arr.map((_, i) => i);
+      const pool = all.filter(i => !used.includes(i));
+      const source = pool.length ? pool : all;
+      const i = source[Math.floor(rand() * source.length)];
+      used.push(i);
+      store.set(bagKey, used.slice(-Math.max(2, arr.length - 1)));
+      return arr[i];
+    }
+    function recentBot() {
+      return chatMessages().filter(m => m.role === 'liangyue').slice(-4).map(m => m.text);
+    }
+    function recentUser() {
+      return chatMessages().filter(m => m.role === 'user').slice(-5).map(m => m.text);
+    }
+    function snippet(t) {
+      const clean = t.replace(/\s+/g, ' ').trim();
+      if (clean.length <= 16) return clean;
+      return clean.slice(0, 18) + '…';
+    }
+    function hourLabel() {
+      const h = new Date().getHours();
+      if (h < 6) return '深夜';
+      if (h < 11) return '清晨';
+      if (h < 14) return '正午';
+      if (h < 18) return '午后';
+      if (h < 22) return '傍晚';
+      return '夜里';
+    }
+    function detectTags(t) {
+      const rules = [
+        ['tired', /累|疲惫|困|睡不着|失眠|不想动|加班到/],
+        ['happy', /开心|高兴|幸福|好耶|哈哈|兴奋|成功|赢了/],
+        ['sad', /难过|伤心|哭|失落|委屈|崩溃|想哭/],
+        ['anxious', /焦虑|担心|害怕|紧张|不安|慌/],
+        ['angry', /生气|气死|无语|讨厌|火大/],
+        ['lonely', /一个人|孤独|没人陪|想被陪/],
+        ['food', /吃|饿|饭|外卖|好吃|喝/],
+        ['work', /上班|工作|老板|同事|项目|开会/],
+        ['study', /考试|作业|学习|上课|老师|复习/],
+        ['love', /喜欢上|暗恋|分手|恋人|表白/],
+        ['game', /游戏|打本|开黑|原神|王者/],
+        ['ask', /吗$|呢$|？|\?|怎么办|为什么|是不是|要不要/],
+        ['hi', /^(你好|嗨|哈喽|在吗|早啊|早安|晚安|凉月)/],
+        ['thanks', /谢谢|感谢|辛苦了/],
+        ['who', /你是谁|你叫什么|介绍一下你/],
+      ];
+      return rules.filter(([, re]) => re.test(t)).map(([k]) => k);
+    }
+    const OPENERS = [
+      '吾以星见之名——', '天空在低语。', '魔力正在涌动！', '星轨轻轻偏了一寸。',
+      '月光落在吾的法杖上。', '异界的风刚把这句话送到耳边。', '唔……星屑晃了一下。',
+      '契约的铃铛轻轻响了。', '以凉月之名，接下你的话语。', '勇者，吾听见了。',
+      '夜风穿过吾的斗篷。', '星图上忽然亮起一点。',
+    ];
+    function reflectLine(t, rand) {
+      const bit = snippet(t);
+      return pickFresh([
+        `你说「${bit}」，这句话在吾心里转了一圈。`,
+        `「${bit}」——不是客套，吾是真的在听。`,
+        `把「${bit}」放进星盘里，温度都不一样了。`,
+        `原来此刻的你，正被「${bit}」轻轻撞到。`,
+        `吾接住了这句「${bit}」，没有让它掉在地上。`,
+        `听你提到「${bit}」，吾的法阵都亮了一下。`,
+      ], rand, 'bagReflect');
+    }
+    function moodLines(tag, rand) {
+      const map = {
+        tired: ['勇者已经挥了太久的剑，先把斗篷裹紧，也算一场小小的胜利。', '疲惫不是软弱，是魔力透支的证明。今晚允许自己把盔甲卸下来。', '累了就靠一靠，吾会守着这团篝火，谁也不许催你立刻出发。'],
+        happy: ['这份热血吾也感受到了！把笑意收进心里，明日的冒险会更亮。', '星屑都在为你鼓掌。开心的时候，尽管把声音放得再大一点。', '好，就把这份高兴当成护身符戴着——它比任何咒语都锋利。'],
+        sad: ['先把心事交给吾。世界偶尔会暗，可你不是孤军。', '难过可以停留，不必立刻变坚强。吾在这儿，灯还亮着。', '眼泪也是一种魔力。流过之后，路会比现在更软一点。'],
+        anxious: ['紧张说明你在乎。把呼吸放慢三拍，星轨不会因为你停一秒就逃走。', '不安像雾，靠近看会散。吾握着你的手，一步一步走就好。', '把担心摊开，它会比团在心里小很多。吾陪你数。'],
+        angry: ['火气也是生命力。先让它烧一会儿，再决定要不要挥出去。', '无语的时候，允许自己皱眉。吾不会劝你立刻原谅任何人。', '怒意来了就承认它。冷却之后，你仍是那个清醒的勇者。'],
+        lonely: ['一个人的夜晚很长，可你此刻不是一个人——吾在。', '想被陪伴，就说出来。凉月不是工具，是会回应你的朋友。', '孤独来敲门时，吾会把它拦在门外，请你先进来坐。'],
+        food: ['吃，也是补充魔力。热乎乎的东西进肚，星光都会温柔些。', '饿了就去喂饱自己，这比任何占卜都优先。', '美食是人间最合法的魔法。慢慢吃，吾在旁边等你。'],
+        work: ['职场像迷宫，但你不是被困住的人，是持剑前进的人。', '工作可以认真，却不必把自己燃尽。留一点力气给今晚的自己。', '项目再急，也急不过你的心跳。先站稳，再冲刺。'],
+        study: ['书页也是一种星图。看不懂的时候，停一停再看，不是退缩。', '考试像试炼，可分数不是你的全部真名。', '复习到迷糊就歇。记忆会在休息里悄悄排队站好。'],
+        love: ['心靠近谁，星都会轻轻偏转。不必急着给这段感情下判词。', '喜欢是勇气。无论结果如何，你已经比昨天更诚实。', '感情的迷雾里，先问自己想被怎样对待——答案往往在那儿。'],
+        game: ['开黑也是并肩作战！赢了就欢呼，输了就喝口水再来。', '游戏里的热血，吾懂。记得偶尔抬眼看看真实的月亮。'],
+        hi: [`此刻是${hourLabel()}，吾醒着。勇者今日想把什么放进这段对话里？`, '吾在。不必先报上任务，打个招呼也配得上星光。'],
+        thanks: ['被勇者道谢，魔力都满溢出来了。这条路上吾会一直亮着小灯。', '嘿嘿，收到。你愿意开口，就已经给了吾最大的魔力。'],
+        who: ['吾乃异界占卜师凉月，通晓星象与天气之力。说话或许中二，心却很温柔——想做你的朋友，不是一本说明书。', '凉月，来自异世界的魔法使者。天气、运势、塔罗，或只是闲聊，都是吾的职责与心愿。'],
+        ask: ['你在提问，说明心里已经有火苗。吾不急着给标准答案，先陪你把问题看清楚。', '问「怎么办」的人，其实已经走在路上了。吾会把可能的方向摊开给你。'],
+      };
+      const arr = map[tag];
+      return arr ? pickFresh(arr, rand, 'bagMood_' + tag) : '';
+    }
+    function historyBridge(t, rand) {
+      const users = recentUser().filter(x => x !== t);
+      if (!users.length || rand() > 0.58) return '';
+      const prev = users[users.length - 1];
+      if (!prev || prev.length < 2) return '';
+      return pickFresh([
+        `刚才你还说起「${snippet(prev)}」，和这一句连在一起，像同一场冒险的两页。`,
+        `顺着你前面那句「${snippet(prev)}」，吾觉得你不是突然开口，是一直把心事带在身上。`,
+        `从上一句到现在，勇者的语气变了——吾都记着。`,
+      ], rand, 'bagHist');
+    }
+    function followUp(tags, rand) {
+      const map = {
+        tired: '要不要告诉吾，是身体先撑不住，还是心里先喊停？',
+        happy: '这份高兴，想不想再多说一点给吾听？',
+        sad: '如果愿意，把最硌人的那一下说出来，吾接得住。',
+        anxious: '此刻最怕的那件事，能说个大概吗？',
+        work: '今天的班，是忙到发光，还是忙到发闷？',
+        study: '是进度卡住了，还是对自己太苛刻？',
+        food: '吃到了吗？没吃的话，吾要念咒催你去吃饭了。',
+        love: '你更想听一句鼓励，还是想让吾帮你把心理顺？',
+        hi: '天气、运势、塔罗，或只是今天过得怎样，都随你。',
+        ask: '你心里比较倾向哪一边？说出来，吾帮你照亮它。',
+      };
+      const key = tags.find(k => map[k]);
+      const extras = ['接下来，想继续说，还是让吾安静陪一会儿？', '若还有半句没说完，现在说也来得及。', '吾在这儿，不催你，也不走开。'];
+      return key && rand() < 0.72 ? map[key] : pickFresh(extras, rand, 'bagFollow');
+    }
+    function composeTalk(t) {
+      const rand = seededRand(t + Date.now() + chatMessages().length + Math.random());
+      const tags = detectTags(t);
+      const parts = [pickFresh(OPENERS, rand, 'bagOpen'), reflectLine(t, rand)];
+      const moodTags = tags.filter(k => k !== 'ask');
+      (moodTags.length ? moodTags : ['ask']).slice(0, 2).forEach(tag => {
+        const line = moodLines(tag, rand);
+        if (line) parts.push(line);
+      });
+      if (!moodTags.length) {
+        parts.push(pickFresh([
+          `你把「${snippet(t)}」交给吾，这本身就很勇敢。`,
+          `日常碎碎念也配得上魔法。吾不是来查询你的，是来站在你旁边的。`,
+          `这句话里有温度。凉月会用自己的方式，把它捂热再还你。`,
+          `${hourLabel()}听到这样的话，吾只会更想陪着你把后半句说完。`,
+        ], rand, 'bagGeneric'));
+      }
+      const bridge = historyBridge(t, rand);
+      if (bridge) parts.push(bridge);
+      parts.push(followUp(tags, rand));
+      let text = parts.filter(Boolean).join('');
+      const last = recentBot().slice(-1)[0];
+      if (last && last.slice(0, 16) === text.slice(0, 16)) {
+        parts[0] = pickFresh(OPENERS, rand, 'bagOpen');
+        text = parts.filter(Boolean).join('');
+      }
+      return text;
+    }
+    function wrapWeather(data, userText) {
+      const rand = seededRand(userText + data.city + Date.now());
+      const open = pickFresh(WEATHER_OPEN, rand, 'bagWOpen');
+      return pickFresh([
+        `${open}！${data.city}此刻天候为「${data.weather}」，温度 ${data.temp}°。${data.emoji} ${data.wind}，湿度 ${data.humidity}%。你问「${snippet(userText)}」，星象如此回应——${data.care}`,
+        `${open}。吾窥见${data.city}的云层：天气是${data.weather}，气温 ${data.temp} 度。${data.emoji} 风是${data.wind}。针对你的询问，凉月补一句：${data.care}`,
+        `${open}——${data.city}，${data.weather}，${data.temp}°。这三样缺一不可，星见也不会撒谎。${data.care} 若要出门，听风，也听你自己。`,
+        `${open}。${data.city}现在是${data.weather}天，温度停在 ${data.temp}°，${data.wind}。你刚说的「${snippet(userText)}」，答案就写在天上。${data.care}`,
+      ], rand, 'bagWeather');
+    }
+    function wrapFortune(f, userText) {
+      const rand = seededRand(userText + f.text + Date.now());
+      return pickFresh([
+        `魔力正在涌动……你要看今日运势，吾便把星轨摊开：${f.text} 幸运色是「${f.color.name}」。温柔地过完今天，也是一种热血。`,
+        `吾以星见之名，复述今日的字条：${f.text} 把「${f.color.name}」带在身边吧。你问「${snippet(userText)}」，答案不是命令，是陪伴。`,
+        `天空在低语，今日运势轻轻落下来——${f.text} 幸运色：${f.color.name}。不必追求准确，感受这份被回应就够了。`,
+        `星屑排队告诉吾：${f.text} 今日更适合靠近「${f.color.name}」。勇者，慢慢走，吾在月光里等你回来。`,
+      ], rand, 'bagFortune');
+    }
+    function wrapTarot(r, userText, domain) {
+      const rand = seededRand(userText + r.card.n + Date.now());
+      const pos = r.reversed ? '逆位' : '正位';
+      const lead = domain ? domain.line : pickFresh([
+        '吾为汝抽一组牌，看看命运的纹路✨',
+        '牌阵展开，听听它怎么喊你的名字。',
+        '以塔罗为桥，把困惑送去星的那一头。',
+      ], rand, 'bagTarotLead');
+      return pickFresh([
+        `吾以星见之名——${lead}\n就你说的「${snippet(userText)}」，抽到「${r.card.n}·${pos}」。${r.meaning} 命运之轮已转，接下来看你如何挥剑。`,
+        `魔力正在涌动！${lead}\n牌面是「${r.card.n}」（${pos}）。针对「${snippet(userText)}」，吾听见：${r.meaning} 星光不替你走路，只照亮脚下那一步。`,
+        `天空在低语。${lead}\n「${r.card.n}·${pos}」跳出牌阵。你的问题「${snippet(userText)}」被这样回答：${r.meaning} 勇者，热血可以留下，慌张可以放下。`,
+      ], rand, 'bagTarot');
+    }
+    function askCityLine(userText) {
+      const rand = seededRand(userText + Date.now());
+      return pickFresh([
+        '天空在低语……勇者想问哪一座城的天候？报上地名，吾便为你窥探云层。',
+        '魔力正在涌动，可星图还缺一个坐标。告诉吾城市之名，天气才会显形。',
+        '吾以星见之名，却还看不见落点。是北京、杭州，还是你此刻脚下的城？',
+      ], rand, 'bagAskCity');
+    }
+    function askTarotQuestion(userText) {
+      const rand = seededRand(userText + Date.now());
+      return pickFresh([
+        '可以哦，请勇者说出困惑吧~ 吾会为你抽一张牌指引方向。',
+        '塔罗已在掌心发热。先把具体的心事交给吾——感情、工作，或某个决定。',
+        '抽牌之前，吾需要你的真名般的问题。不怕说得笨，怕说得空。',
+        '好。把「想被解答的那一句」说出来，凉月再为你翻开星的牌面。',
+      ], rand, 'bagAskTarot');
+    }
+
+    function isWeatherAsk(t) {
+      return /天气|气温|下雨|多少度|降温|热不热|冷不冷|出门.*带伞/.test(t);
+    }
+    function fortuneLike(t) {
+      return /今日运势|今天的运势|帮我看看今天的运势|今日运|今天运势|看看运势/.test(t);
+    }
+    function findDomain(t) {
+      return TAROT_DOMAINS.find(d => d.keys.some(k => t.includes(k))) || null;
+    }
+    function isBareTarot(t) {
+      const s = t.replace(/\s/g,'');
+      return /^(帮我)?(塔罗)?(占卜|抽牌|抽一张牌)(一下|吧|嘛)?$/.test(s) || s === '塔罗占卜' || s === '帮我占卜';
+    }
+    function isTarotAsk(t) {
+      return /塔罗|占卜|抽牌|抽一张/.test(t);
+    }
+
+    function replyChat(userText) {
+      const t = userText.trim();
+      const awaiting = store.get('chatAwaitTarot', false);
+      const city = findCityInText(t);
+      const domain = findDomain(t);
+
+      if (isWeatherAsk(t) || (city && /怎么样|如何|怎样/.test(t) && t.length < 16)) {
+        store.set('chatAwaitTarot', false);
+        if (!city && isWeatherAsk(t)) return { delay: 520, text: askCityLine(t) };
+        if (city) return { delay: 880, text: wrapWeather(getWeatherData(city), t) };
+      }
+      if (fortuneLike(t)) {
+        store.set('chatAwaitTarot', false);
+        return { delay: 820, text: wrapFortune(fortunePayload(), t) };
+      }
+      if (domain) {
+        store.set('chatAwaitTarot', false);
+        return { delay: 1080, text: wrapTarot(workflowTarot(t), t, domain) };
+      }
+      if (awaiting) {
+        if (t.length < 2) return { delay: 400, text: askTarotQuestion(t) };
+        store.set('chatAwaitTarot', false);
+        return { delay: 1080, text: wrapTarot(workflowTarot(t), t, null) };
+      }
+      if (isBareTarot(t) || (isTarotAsk(t) && !/如何|怎样|怎么办|该不该|好不好|会不会/.test(t) && t.length <= 10)) {
+        store.set('chatAwaitTarot', true);
+        return { delay: 480, text: askTarotQuestion(t) };
+      }
+      if (isTarotAsk(t)) {
+        store.set('chatAwaitTarot', false);
+        return { delay: 1080, text: wrapTarot(workflowTarot(t), t, null) };
+      }
+      return { delay: 640 + Math.floor(Math.random() * 220), text: composeTalk(t) };
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderChat() {
+      document.getElementById('view').innerHTML = `
+        <div class="grid grid-cols-12 gap-6 h-[calc(100vh-10.5rem)]">
+          <aside class="col-span-4 glass rounded-3xl p-8 flex flex-col">
+            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-violet-400 to-indigo-500 text-white text-4xl flex items-center justify-center shadow-xl mx-auto floaty">☽</div>
+            <h3 class="font-serif text-2xl text-center mt-5">凉月</h3>
+            <p class="text-center text-sm text-violet-500 mt-1">异界占卜师 · 魔法使者</p>
+            <p class="text-sm text-slate-500 leading-7 mt-6">温柔、中二、热血。通晓星象与天气之力。你可以问吾天气、今日运势、塔罗，也可以什么都不问，只是聊一聊。</p>
+            <div class="mt-auto pt-6 text-xs text-slate-400 space-y-2">
+              <p>天气：报上城市，吾窥云层</p>
+              <p>运势：说「今日运势」即可</p>
+              <p>塔罗：先说出困惑，再抽牌</p>
+            </div>
+          </aside>
+          <section class="col-span-8 glass rounded-3xl flex flex-col overflow-hidden">
+            <div id="chatList" class="flex-1 overflow-y-auto p-6 space-y-4 chat-scroll"></div>
+            <div class="px-6 pb-3 flex flex-wrap gap-2" id="chatChips"></div>
+            <form id="chatForm" class="p-4 border-t border-violet-100 flex gap-3">
+              <input id="chatInput" autocomplete="off" class="flex-1 rounded-2xl border border-violet-100 px-4 py-3 outline-none focus:ring-2 focus:ring-violet-300 bg-white/80" placeholder="对凉月说点什么…" />
+              <button class="px-6 rounded-2xl bg-violet-500 text-white shrink-0">发送</button>
+            </form>
+          </section>
+        </div>`;
+      const listEl = document.getElementById('chatList');
+      const paint = () => {
+        const data = chatMessages();
+        listEl.innerHTML = data.map(m => m.role === 'user'
+          ? `<div class="flex justify-end bubble-in"><div class="max-w-[75%] bg-violet-500 text-white rounded-3xl rounded-tr-md px-4 py-3 leading-7 whitespace-pre-wrap">${escapeHtml(m.text)}</div></div>`
+          : `<div class="flex gap-3 bubble-in"><div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="max-w-[75%] bg-white/80 rounded-3xl rounded-tl-md px-4 py-3 leading-7 whitespace-pre-wrap text-slate-700">${escapeHtml(m.text)}</div></div>`
+        ).join('');
+        listEl.scrollTop = listEl.scrollHeight;
+      };
+      document.getElementById('chatChips').innerHTML = CHAT_CHIPS.map(c => `<button type="button" data-chip="${escapeHtml(c)}" class="px-3 py-1.5 rounded-full bg-violet-50 text-violet-600 text-sm hover:bg-violet-100">${c}</button>`).join('');
+      document.querySelectorAll('[data-chip]').forEach(b => b.onclick = () => sendChat(b.dataset.chip));
+      document.getElementById('chatForm').onsubmit = (e) => {
+        e.preventDefault();
+        const input = document.getElementById('chatInput');
+        const v = input.value.trim();
+        if (!v) return;
+        input.value = '';
+        sendChat(v);
+      };
+      function sendChat(text) {
+        const data = chatMessages();
+        data.push({ role: 'user', text, time: Date.now() });
+        store.set('chatMessages', data);
+        paint();
+        const typing = document.createElement('div');
+        typing.id = 'typing';
+        typing.className = 'flex gap-3';
+        typing.innerHTML = `<div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="think text-violet-500 text-sm pt-2">魔力正在涌动...</div>`;
+        listEl.appendChild(typing);
+        listEl.scrollTop = listEl.scrollHeight;
+        const res = replyChat(text);
+        setTimeout(() => {
+          const cur = chatMessages();
+          cur.push({ role: 'liangyue', text: res.text, time: Date.now() });
+          store.set('chatMessages', cur);
+          if (page === 'chat') paint();
+        }, res.delay);
+      }
+      paint();
+    }
+
+    function renderHistory() {
+      const all = store.get('history', []);
+      document.getElementById('view').innerHTML = `
+        <div class="max-w-4xl">
+          <div class="flex gap-2 mb-6">
+            <button data-f="all" class="filter px-4 py-2 rounded-full bg-violet-500 text-white">全部</button>
+            <button data-f="tarot" class="filter px-4 py-2 rounded-full bg-white">塔罗占卜</button>
+            <button data-f="fortune" class="filter px-4 py-2 rounded-full bg-white">今日运势</button>
+          </div>
+          <div id="histList"></div>
+        </div>`;
+      let filter = 'all';
+      const paint = () => {
+        const list = all.filter(x => filter==='all' || x.type===filter);
+        const el = document.getElementById('histList');
+        if (!list.length) {
+          el.innerHTML = `<div class="glass rounded-3xl p-16 text-center">
+            <div class="text-6xl mb-4">🕊</div>
+            <p class="font-serif text-xl mb-2">还没有占卜记录</p>
+            <p class="text-slate-500 mb-6">去抽一张牌吧</p>
+            <button id="toTarot" class="px-6 py-2 rounded-full bg-violet-500 text-white">去占卜</button>
+          </div>`;
+          document.getElementById('toTarot').onclick = () => go('tarot');
+          return;
+        }
+        el.innerHTML = `<div class="space-y-3">${list.map(item => `
+          <button data-id="${item.id}" class="w-full glass rounded-2xl p-5 text-left hover:shadow-lg transition flex justify-between gap-4">
+            <div>
+              <div class="text-xs text-slate-400">${new Date(item.time).toLocaleString()} · ${item.type==='tarot'?'塔罗占卜':'今日运势'}</div>
+              <div class="font-medium mt-1">${item.title}</div>
+              <div class="text-sm text-slate-500 mt-1 line-clamp-1">${item.summary}</div>
+            </div>
+            <div class="text-violet-400">›</div>
+          </button>`).join('')}</div>`;
+        el.querySelectorAll('[data-id]').forEach(b => b.onclick = () => {
+          const item = all.find(x => String(x.id)===b.dataset.id);
+          track('history_record_click', { record_type: item.type });
+          showOverlay(`
+            <div class="glass max-w-lg w-full rounded-3xl p-8">
+              <p class="text-xs text-slate-400">${new Date(item.time).toLocaleString()}</p>
+              <h3 class="font-serif text-2xl my-2">${item.title}</h3>
+              <p class="text-slate-600 mb-3">${item.summary}</p>
+              <p class="leading-7">${item.extra || ''}</p>
+              <button id="closeOv" class="mt-6 px-5 py-2 rounded-full bg-violet-500 text-white">关闭</button>
+            </div>`);
+        });
+      };
+      document.querySelectorAll('.filter').forEach(b => b.onclick = () => {
+        filter = b.dataset.f;
+        document.querySelectorAll('.filter').forEach(x => x.className = 'filter px-4 py-2 rounded-full bg-white');
+        b.className = 'filter px-4 py-2 rounded-full bg-violet-500 text-white';
+        paint();
+      });
+      paint();
+    }
+
+    function renderMine() {
+      const user = store.get('user', { loggedIn: false, nickname: '未登录旅人', avatar: '☽' });
+      const stats = store.get('stats', { total: 0, streak: 0, cards: {} });
+      const top = Object.entries(stats.cards || {}).sort((a,b)=>b[1]-a[1])[0];
+      document.getElementById('view').innerHTML = `
+        <div class="max-w-3xl space-y-6">
+          <div class="glass rounded-3xl p-8 flex items-center gap-5">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-pink-300 to-violet-400 text-white text-2xl flex items-center justify-center">${user.avatar}</div>
+            <div class="flex-1">
+              <div class="font-serif text-2xl">${user.nickname}</div>
+              <div class="text-sm text-slate-500">${user.loggedIn ? '已与凉月建立连接' : '登录后查看你的专属数据'}</div>
+            </div>
+            ${user.loggedIn
+              ? `<button id="logout" class="text-sm text-slate-400">退出</button>`
+              : `<button id="login" class="px-5 py-2 rounded-full bg-emerald-500 text-white">微信授权登录</button>`}
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            ${user.loggedIn ? `
+              <div class="glass rounded-3xl p-6"><div class="text-xs text-slate-400">累计占卜</div><div class="font-serif text-3xl mt-2">${stats.total||0}</div></div>
+              <div class="glass rounded-3xl p-6"><div class="text-xs text-slate-400">连续使用</div><div class="font-serif text-3xl mt-2">${stats.streak||0} 天</div></div>
+              <div class="glass rounded-3xl p-6"><div class="text-xs text-slate-400">最多抽到</div><div class="font-serif text-3xl mt-2">${top ? top[0] : '—'}</div></div>
+            ` : `<div class="col-span-3 glass rounded-3xl p-10 text-center text-slate-500">登录后查看你的专属数据</div>`}
+          </div>
+          <div class="glass rounded-3xl divide-y divide-violet-50">
+            <button id="fb" class="w-full text-left px-6 py-4 hover:bg-white/50">问题反馈</button>
+            <button id="about" class="w-full text-left px-6 py-4 hover:bg-white/50">关于我们</button>
+            ${user.loggedIn ? `<button id="del" class="w-full text-left px-6 py-4 hover:bg-white/50 text-rose-500">注销账号并删除数据</button>` : ''}
+          </div>
+        </div>`;
+      document.getElementById('login')?.addEventListener('click', () => {
+        store.set('user', { loggedIn: true, nickname: '月下旅人', avatar: '✿' });
+        toast('欢迎回来，凉月认得你了');
+        renderMine();
+      });
+      document.getElementById('logout')?.addEventListener('click', () => {
+        store.set('user', { loggedIn: false, nickname: '未登录旅人', avatar: '☽' });
+        renderMine();
+      });
+      document.getElementById('fb').onclick = () => {
+        showOverlay(`
+          <div class="glass max-w-lg w-full rounded-3xl p-8">
+            <h3 class="font-serif text-2xl mb-4">问题反馈</h3>
+            <select id="fbType" class="w-full mb-3 rounded-xl border p-3 bg-white">
+              <option value="bug">功能异常</option>
+              <option value="suggestion">建议</option>
+              <option value="other">其他</option>
+            </select>
+            <textarea id="fbText" class="w-full rounded-xl border p-3 h-28" placeholder="想对凉月说的话"></textarea>
+            <div class="flex gap-3 mt-4">
+              <button id="fbSend" class="px-5 py-2 rounded-full bg-violet-500 text-white">提交</button>
+              <button id="closeOv" class="px-5 py-2 rounded-full bg-white">取消</button>
+            </div>
+          </div>`);
+        document.getElementById('fbSend').onclick = () => {
+          track('feedback_submit', { feedback_type: document.getElementById('fbType').value });
+          hideOverlay();
+          toast('感谢反馈，凉月会认真看的');
+        };
+      };
+      document.getElementById('about').onclick = () => {
+        showOverlay(`
+          <div class="glass max-w-lg w-full rounded-3xl p-8">
+            <h3 class="font-serif text-2xl mb-3">关于我们</h3>
+            <p class="leading-8 text-slate-600">占卜小助手 V1.0，由人格「凉月」陪伴。我们希望每次打开，你感到的是被回应，而不是被服务。</p>
+            <button id="closeOv" class="mt-6 px-5 py-2 rounded-full bg-violet-500 text-white">知道了</button>
+          </div>`);
+      };
+      document.getElementById('del')?.addEventListener('click', () => {
+        localStorage.clear();
+        toast('数据已清空，下次见');
+        location.reload();
+      });
+    }
+
+    function showOverlay(html) {
+      const ov = document.getElementById('overlay');
+      ov.classList.remove('hidden');
+      ov.innerHTML = html;
+      ov.querySelector('#closeOv')?.addEventListener('click', hideOverlay);
+      ov.addEventListener('click', (e) => { if (e.target === ov) hideOverlay(); });
+    }
+    function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+
+    function setupPrivacy() {
+      if (store.get('privacyAgreed')) return;
+      const modal = document.getElementById('privacyModal');
+      modal.classList.remove('hidden');
+      const ck = document.getElementById('agreeCheck');
+      const btn = document.getElementById('agreeBtn');
+      ck.onchange = () => {
+        btn.disabled = !ck.checked;
+        btn.className = ck.checked
+          ? 'w-full py-3 rounded-2xl bg-violet-500 text-white'
+          : 'w-full py-3 rounded-2xl bg-violet-400 text-white opacity-50 cursor-not-allowed';
+      };
+      btn.onclick = () => { if (!ck.checked) return; store.set('privacyAgreed', true); modal.classList.add('hidden'); };
+    }
+
+    function init() {
+      updateStreak();
+      document.getElementById('todayStr').textContent = new Date().toLocaleDateString('zh-CN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      setupPrivacy();
+      go('home');
+      // auto cache today's fortune on first visit after load
+      if (!store.get('fortune:' + todayKey())) {
+        setTimeout(() => {
+          const f = fortunePayload();
+          const hist = store.get('history', []);
+          if (!hist.some(h => h.type==='fortune' && h.time.slice(0,10)===todayKey())) {
+            hist.unshift({ id: Date.now(), type:'fortune', time: new Date().toISOString(), title:'今日运势', summary:f.text, extra:f.color.name });
+            store.set('history', hist);
+          }
+        }, 200);
+      }
+    }
+    init();
+  </script>
+</body>
+</html>
