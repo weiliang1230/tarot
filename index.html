@@ -31,11 +31,6 @@
         linear-gradient(180deg, #f7f2ff 0%, #fbf7f2 42%, #eef4ff 100%);
     }
     .glass { background: rgba(255,255,255,.72); backdrop-filter: blur(18px); }
-    .card-3d { perspective: 1200px; }
-    .card-inner { transform-style: preserve-3d; transition: transform 1.2s cubic-bezier(.2,.8,.2,1); }
-    .card-inner.flipped { transform: rotateY(180deg); }
-    .face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
-    .face-back { transform: rotateY(180deg); }
     @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
     .floaty { animation: floaty 5s ease-in-out infinite; }
     @keyframes pulse-soft { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
@@ -48,7 +43,6 @@
     .bubble-in { animation: fadeIn .28s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
-    /* ===== 手机端适配 ===== */
     @media (max-width: 768px) {
       aside { display: none !important; }
       main { padding: 16px !important; padding-bottom: 88px !important; }
@@ -142,33 +136,29 @@
   <div id="overlay" class="hidden fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6"></div>
 
   <script>
-    // ==================== 配置区（请修改这里） ====================
+    // ==================== 配置区 ====================
     const AI_CONFIG = {
       API_URL: "https://tarot-1t5.pages.dev/api/chat"
     };
-    // ============================================================
+    // ==============================================
 
     const SYSTEM_PROMPTS = {
       chat: `你是一位来自异世界的占卜师，名叫凉月。说话风格温柔、中二、热血，像动漫里的魔法使者。用户和你聊天时，你要认真倾听，给出温暖的回应，称呼用户为"勇者"，偶尔用"吾"自称。回复控制在150字以内。`,
-      fortune: `你是占卜师凉月。请为用户生成一段今日运势，严格输出 JSON：{"text":"50字以内的治愈系运势描述","color":"从[月白,雾蓝,丁香紫,杏桃,抹茶,暖金,海盐,暮粉]中选一个幸运色"}`,
-      tarot: `你是塔罗占卜师凉月。用户会告诉你他的困惑，请从这22张牌中随机抽一张：愚者、魔术师、女祭司、女皇、皇帝、教皇、恋人、战车、力量、隐者、命运之轮、正义、倒吊人、死神、节制、恶魔、高塔、星星、月亮、太阳、审判、世界。
-请用温柔、中二的口吻直接输出一段解读，包含牌名和牌面含义，50字以内。不要输出 JSON。`,
-      weather: `你是天气播报员凉月。用户会告诉你城市名，请用一句温柔中二的话播报天气。严格输出 JSON：{"city":"城市名","weather":"晴/多云/阴/小雨/雷阵雨","emoji":"☀/⛅/☁/🌧/⛈","temp":15到30之间的数字,"care":"一句关怀的话"}`,
+      fortune: `你是占卜师凉月。请为用户生成一段今日运势，包含50字以内的治愈系运势描述和一个幸运色（从月白、雾蓝、丁香紫、杏桃、抹茶、暖金、海盐、暮粉中选一个）。直接说一段自然的话，不要输出 JSON。`,
+      tarot: `你是塔罗占卜师凉月。用户会告诉你他的困惑，请从这22张牌中随机抽一张：愚者、魔术师、女祭司、女皇、皇帝、教皇、恋人、战车、力量、隐者、命运之轮、正义、倒吊人、死神、节制、恶魔、高塔、星星、月亮、太阳、审判、世界。请用温柔、中二的口吻直接输出一段解读，包含牌名和牌面含义，50字以内。不要输出 JSON。`,
+      weather: `你是天气播报员凉月。用户会告诉你城市名，请用一句温柔中二的话播报天气，包含城市名、天气状况（晴/多云/阴/小雨等）和温度（15-30度之间）。不要输出 JSON，直接说一句自然的话。`,
     };
 
     async function callAI(systemPrompt, userMessage, onChunk) {
       try {
         const response = await fetch(AI_CONFIG.API_URL, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             system: systemPrompt,
             message: userMessage
           })
         });
-
         const data = await response.json();
         const reply = data.reply || "__ERROR__";
         if (onChunk) onChunk(reply);
@@ -190,16 +180,6 @@
     ];
     const CHAT_WELCOME = '吾以星见之名——异界占卜师凉月，于此苏醒。天气、运势、塔罗……或只是想找人说说话，勇者尽管开口。';
     const CHAT_CHIPS = ['北京天气怎么样', '帮我看看今天的运势', '帮我占卜', '最近事业运如何', '今天有点累'];
-    const COLORS = [
-      { name: '月白', hex: '#F4F1EA' }, { name: '雾蓝', hex: '#A8C5D4' },
-      { name: '丁香紫', hex: '#C4B5FD' }, { name: '杏桃', hex: '#F6C6B8' },
-      { name: '抹茶', hex: '#B7D3A8' }, { name: '暖金', hex: '#E6C27A' },
-      { name: '海盐', hex: '#D7EEEA' }, { name: '暮粉', hex: '#E8A0BF' },
-    ];
-    const FORTUNE_LINES = [
-      '今天适合把脚步放慢半拍。你会在一件小事里，重新认出自己。',
-      '有人想起你，只是还没找到合适的句子。保持柔软，好消息喜欢绕路。',
-    ];
 
     const store = {
       get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } },
@@ -284,19 +264,12 @@
       document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
     }
 
-    function paintFortune(data) {
+    function paintFortune(text) {
       const el = document.getElementById('fortuneBody');
       if (!el) return;
       el.innerHTML = `
-        <p class="text-violet-500 text-sm mb-3">凉月今日寄语 · ${data.date}</p>
-        <p class="font-serif text-2xl leading-relaxed text-slate-800 mb-8">${data.text}</p>
-        <div class="inline-flex items-center gap-3 bg-white/70 rounded-2xl px-4 py-3">
-          <span class="w-8 h-8 rounded-full border border-white shadow" style="background:${data.color.hex}"></span>
-          <div>
-            <div class="text-xs text-slate-400">幸运色</div>
-            <div class="font-medium">${data.color.name}</div>
-          </div>
-        </div>`;
+        <p class="text-violet-500 text-sm mb-3">凉月今日寄语 · ${todayKey()}</p>
+        <p class="font-serif text-2xl leading-relaxed text-slate-800 whitespace-pre-wrap">${text}</p>`;
     }
 
     async function renderFortune() {
@@ -312,14 +285,7 @@
         </div>`;
 
       const reply = await callAI(SYSTEM_PROMPTS.fortune, "请给我今天的运势");
-      let data;
-      try {
-        const parsed = JSON.parse(reply.replace(/```json|```/g, "").trim());
-        data = { date: todayKey(), text: parsed.text, color: COLORS.find(c => c.name === parsed.color) || COLORS[0] };
-      } catch {
-        data = { date: todayKey(), text: reply || FORTUNE_LINES[0], color: COLORS[0] };
-      }
-      paintFortune(data);
+      paintFortune(reply === '__ERROR__' ? '吾的魔力暂时被干扰了，请稍后再试～' : reply);
 
       const btn = document.getElementById('refreshBtn');
       if (btn) btn.onclick = () => renderFortune();
@@ -402,22 +368,11 @@
         const box = document.getElementById('weatherResult');
         box.innerHTML = `<p class="think text-emerald-600">凉月正在看云...</p>`;
         const reply = await callAI(SYSTEM_PROMPTS.weather, `请告诉我${name}今天的天气`);
-        let data;
-        try {
-          const parsed = JSON.parse(reply.replace(/```json|```/g, "").trim());
-          data = { city: parsed.city, weather: parsed.weather, emoji: parsed.emoji || '☀', temp: parsed.temp, care: parsed.care };
-        } catch {
-          box.innerHTML = `<p class="text-rose-500">AI 暂时无法返回结果，请稍后重试。</p>`;
-          return;
-        }
+        const text = reply === '__ERROR__' ? '吾的魔力暂时被干扰了，请稍后再试～' : reply;
         box.innerHTML = `
           <div class="rounded-3xl bg-gradient-to-br from-sky-400 to-emerald-300 text-white p-8">
-            <div class="text-sm opacity-90">${data.city}</div>
-            <div class="flex items-end gap-3 mt-2">
-              <div class="text-6xl font-light">${data.temp}°</div>
-              <div class="pb-2">${data.emoji} ${data.weather}</div>
-            </div>
-            <p class="mt-6 leading-7 bg-white/15 rounded-2xl p-4">${data.care}</p>
+            <div class="text-sm opacity-90">${name}</div>
+            <p class="mt-4 leading-8 whitespace-pre-wrap">${text}</p>
           </div>`;
       };
     }
@@ -472,7 +427,7 @@
         paint();
         const typing = document.createElement('div');
         typing.className = 'flex gap-3';
-        typing.innerHTML = `<div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="max-w-[75%] bg-white/80 rounded-3xl rounded-tl-md px-4 py-3 text-slate-700"><span class="think">魔力正在涌动...</span></div>`;
+        typing.innerHTML = `<div class="w-9 h-9 rounded-full bg-gradient-to-br from-violet-300 to-indigo-400 text-white flex items-center justify-center shrink-0">☽</div><div class="max-w-[75%] bg-white/80 rounded-3xl rounded-tl-md px-4 py-3 text-slate-700"><span class="think">凉月正在聆听你的话...</span></div>`;
         listEl.appendChild(typing);
         listEl.scrollTop = listEl.scrollHeight;
         const reply = await callAI(SYSTEM_PROMPTS.chat, text);
