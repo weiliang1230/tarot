@@ -1,6 +1,6 @@
 export async function onRequestPost(context) {
   // 从 Cloudflare 环境变量中读取 Coze 的 Token 和 Bot ID
-  const { pat_x2ZfifQ5flKF1uusLrDM8sqkW3A6Schet4ZjkhpA4sHRUKzAdiQGu1tUxVMgKCHi, 7681199813144150035 } = context.env;
+  const { pat_natbLqQO8yNCceRSYqzVL4f8tjilVp4mr1KQqaMV0PftoOhNgZOdJ9w1lQilaSNZ, 7681199813144150035 } = context.env;
 
   try {
     const { message } = await context.request.json();
@@ -9,7 +9,7 @@ export async function onRequestPost(context) {
     const response = await fetch("https://api.coze.cn/v3/chat", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${pat_x2ZfifQ5flKF1uusLrDM8sqkW3A6Schet4ZjkhpA4sHRUKzAdiQGu1tUxVMgKCHi}`,
+        "Authorization": `Bearer ${pat_natbLqQO8yNCceRSYqzVL4f8tjilVp4mr1KQqaMV0PftoOhNgZOdJ9w1lQilaSNZ}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
