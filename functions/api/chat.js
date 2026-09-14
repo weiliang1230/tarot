@@ -1,11 +1,9 @@
 export async function onRequestPost(context) {
-  // 从 Cloudflare 环境变量中读取 Coze 的 Token 和 Bot ID
-  const { COZE_API_KEY,COZE_BOT_ID } = context.env;
+  const { COZE_API_KEY, COZE_BOT_ID } = context.env;
 
   try {
     const { message } = await context.request.json();
 
-    // 调用 Coze API
     const response = await fetch("https://api.coze.cn/v3/chat", {
       method: "POST",
       headers: {
@@ -18,13 +16,13 @@ export async function onRequestPost(context) {
         additional_messages: [
           { role: "user", content: message, content_type: "text" }
         ],
-        stream: false
+        stream: false,
+        auto_save_history: true
       })
     });
 
     const data = await response.json();
 
-    // 把 Coze 的回复返回给前端
     return new Response(JSON.stringify(data), {
       headers: { "Content-Type": "application/json" }
     });
@@ -36,7 +34,6 @@ export async function onRequestPost(context) {
   }
 }
 
-// 处理 CORS 预检请求，确保你的 GitHub Pages 前端可以调用
 export async function onRequestOptions() {
   return new Response(null, {
     headers: {
