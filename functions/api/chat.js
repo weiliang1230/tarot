@@ -27,14 +27,16 @@ export async function onRequestPost(context) {
     const conversationId = chatData.data?.conversation_id;
 
     if (!chatId) {
-      return new Response(JSON.stringify({ reply: "发起对话失败：" + JSON.stringify(chatData) }), {
+      return new Response(JSON.stringify({ reply: "发起对话失败" }), {
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 第二步：轮询拉取结果（最多等 40 秒）
-    for (let i = 0; i < 40; i++) {
-      await new Promise(r => setTimeout(r, 1000));
+    // 第二步：轮询拉取结果（优化版：首轮等 1 秒，之后每 500ms 查一次，最多 20 次）
+    let status = "in_progress";
+    for (let i = 0; i < 20; i++) {
+      // 第一次等 1 秒，之后每次等 500ms
+      await new Promise(r => setTimeout(r, i === 0 ? 1000 : 500));
 
       const pollRes = await fetch(
         `https://api.coze.cn/v3/chat/retrieve?chat_id=${chatId}&conversation_id=${conversationId}`,
@@ -44,7 +46,7 @@ export async function onRequestPost(context) {
         }
       );
       const pollData = await pollRes.json();
-      const status = pollData.data?.status;
+      status = pollData.data?.status;
 
       if (status === "completed") {
         // 第三步：拉取消息列表
@@ -57,16 +59,15 @@ export async function onRequestPost(context) {
         );
         const msgData = await msgRes.json();
         const messages = msgData.data || [];
-        // 找到 type 为 answer 的消息
         const answerMsg = messages.find(m => m.type === "answer");
-        const answer = answerMsg?.content || "（未获得回答，消息列表：" + JSON.stringify(messages) + "）";
+        const answer = answerMsg?.content || "（未获得回答）";
         return new Response(JSON.stringify({ reply: answer }), {
           headers: { "Content-Type": "application/json" }
         });
       }
 
       if (status === "failed" || status === "requires_action") {
-        return new Response(JSON.stringify({ reply: "对话失败，状态：" + status }), {
+        return new Response(JSON.stringify({ reply: "对话失败，请稍后重试" }), {
           headers: { "Content-Type": "application/json" }
         });
       }
