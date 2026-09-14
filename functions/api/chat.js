@@ -27,14 +27,13 @@ export async function onRequestPost(context) {
     const conversationId = chatData.data?.conversation_id;
 
     if (!chatId) {
-      return new Response(JSON.stringify({ error: '发起对话失败', detail: chatData }), {
-        status: 500, headers: { "Content-Type": "application/json" }
+      return new Response(JSON.stringify({ reply: "发起对话失败：" + JSON.stringify(chatData) }), {
+        headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 第二步：轮询拉取结果（最多等 30 秒）
-    let answer = "";
-    for (let i = 0; i < 30; i++) {
+    // 第二步：轮询拉取结果（最多等 40 秒）
+    for (let i = 0; i < 40; i++) {
       await new Promise(r => setTimeout(r, 1000));
 
       const pollRes = await fetch(
@@ -45,9 +44,10 @@ export async function onRequestPost(context) {
         }
       );
       const pollData = await pollRes.json();
+      const status = pollData.data?.status;
 
-      if (pollData.data?.status === "completed") {
-        // 第三步：拉取消息列表，找到 AI 的回复
+      if (status === "completed") {
+        // 第三步：拉取消息列表
         const msgRes = await fetch(
           `https://api.coze.cn/v3/chat/message/list?chat_id=${chatId}&conversation_id=${conversationId}`,
           {
@@ -56,24 +56,28 @@ export async function onRequestPost(context) {
           }
         );
         const msgData = await msgRes.json();
-        const answerMsg = msgData.data?.find(m => m.type === "answer");
-        answer = answerMsg?.content || "（未获得回答）";
-        break;
+        const messages = msgData.data || [];
+        // 找到 type 为 answer 的消息
+        const answerMsg = messages.find(m => m.type === "answer");
+        const answer = answerMsg?.content || "（未获得回答，消息列表：" + JSON.stringify(messages) + "）";
+        return new Response(JSON.stringify({ reply: answer }), {
+          headers: { "Content-Type": "application/json" }
+        });
       }
 
-      if (pollData.data?.status === "failed") {
-        return new Response(JSON.stringify({ error: '对话失败', detail: pollData }), {
-          status: 500, headers: { "Content-Type": "application/json" }
+      if (status === "failed" || status === "requires_action") {
+        return new Response(JSON.stringify({ reply: "对话失败，状态：" + status }), {
+          headers: { "Content-Type": "application/json" }
         });
       }
     }
 
-    return new Response(JSON.stringify({ reply: answer }), {
+    return new Response(JSON.stringify({ reply: "等待超时，请稍后再试" }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Coze 调用失败', detail: String(error) }), {
-      status: 500, headers: { "Content-Type": "application/json" }
+    return new Response(JSON.stringify({ reply: "调用出错：" + String(error) }), {
+      headers: { "Content-Type": "application/json" }
     });
   }
 }
