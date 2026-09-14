@@ -34,7 +34,7 @@ export async function onRequestPost(context) {
 
     // 第二步：轮询拉取结果（优化版：首轮等 1 秒，之后每 500ms 查一次，最多 20 次）
     let status = "in_progress";
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 40; i++) {
       // 第一次等 1 秒，之后每次等 500ms
       await new Promise(r => setTimeout(r, i === 0 ? 1000 : 500));
 
