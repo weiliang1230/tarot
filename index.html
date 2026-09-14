@@ -297,7 +297,7 @@
           <span class="w-6 text-center">${n.icon}</span><span>${n.name}</span>
         </button>`).join('');
       
-      // 手机端底部 Tab 栏（只显示5个核心页面）
+      // 手机端底部 Tab 栏（保留 chat）
       const mobileNav = NAV.filter(n => ['home','chat','fortune','tarot','mine'].includes(n.id));
       const tabbar = document.getElementById('mobileTabbar');
       if (tabbar) {
@@ -347,7 +347,7 @@
             { id:'tarot', t:'塔罗占卜', d:'22 张大阿尔卡纳，一次只抽一张，认真听你的问题。', c:'from-indigo-400 to-sky-300' },
             { id:'weather', t:'天气查询', d:'温度、风力，外加一句刚好的关怀。', c:'from-emerald-400 to-teal-300' },
           ].map(x=>`
-            <button data-go="${x.id}" class="col-span-3 glass rounded-3xl p-6 text-left hover:shadow-xl hover:-translate-y-0.5 transition group">
+            <button data-go="${x.id}" class="col-span-4 glass rounded-3xl p-6 text-left hover:shadow-xl hover:-translate-y-0.5 transition group">
               <div class="w-12 h-12 rounded-2xl bg-gradient-to-br ${x.c} mb-4 shadow"></div>
               <h4 class="font-serif text-xl mb-2">${x.t}</h4>
               <p class="text-sm text-slate-500 leading-6">${x.d}</p>
