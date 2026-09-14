@@ -171,7 +171,6 @@
         });
 
         const data = await response.json();
-        // 根据 Coze 返回结构，提取回答内容（如果结构不同，需要在这里调整）
         const reply = data.reply || "__ERROR__";
         if (onChunk) onChunk(reply);
         return reply;
@@ -287,7 +286,9 @@
     }
 
     function paintFortune(data) {
-      document.getElementById('fortuneBody').innerHTML = `
+      const el = document.getElementById('fortuneBody');
+      if (!el) return;  // ← 防止页面已切走时报错
+      el.innerHTML = `
         <p class="text-violet-500 text-sm mb-3">凉月今日寄语 · ${data.date}</p>
         <p class="font-serif text-2xl leading-relaxed text-slate-800 mb-8">${data.text}</p>
         <div class="inline-flex items-center gap-3 bg-white/70 rounded-2xl px-4 py-3">
@@ -321,7 +322,8 @@
       }
       paintFortune(data);
 
-      document.getElementById('refreshBtn').onclick = () => renderFortune();
+      const btn = document.getElementById('refreshBtn');
+      if (btn) btn.onclick = () => renderFortune();
     }
 
     let tarotState = { question: '', drawing: false, result: null };
@@ -333,6 +335,7 @@
 
     function paintTarot() {
       const box = document.getElementById('tarotBox');
+      if (!box) return;  // ← 防止页面已切走时报错
       if (tarotState.drawing) {
         box.innerHTML = `<div class="glass rounded-3xl p-10 flex flex-col items-center"><p class="think text-violet-500">凉月正在解读牌阵...</p></div>`;
         return;
@@ -547,4 +550,5 @@
     init();
   </script>
 </body>
+</html>
 </html>
