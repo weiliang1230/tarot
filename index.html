@@ -172,9 +172,7 @@
 
         const data = await response.json();
         // 根据 Coze 返回结构，提取回答内容（如果结构不同，需要在这里调整）
-        const reply = data.messages?.find(m => m.type === 'answer')?.content
-                   || data.choices?.[0]?.message?.content
-                   || "__ERROR__";
+        const reply = data.reply || "__ERROR__";
         if (onChunk) onChunk(reply);
         return reply;
       } catch (error) {
